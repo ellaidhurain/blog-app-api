@@ -35,7 +35,7 @@ const port = process.env.PORT
 
 mongoose
   .connect(mongoURI)
-  .then(() => app.listen(port))
+  .then(() => app.listen(port,"0.0.0.0"))
   .then(() => console.log("Connected To mongo DB and Listening Localhost 5000"))
   .catch((err) => console.log(err));
 
