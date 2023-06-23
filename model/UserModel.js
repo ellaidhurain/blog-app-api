@@ -8,7 +8,8 @@ const UserSchema = mongoose.Schema({
   Name: {
     type: String,
     required: true,
-    lowercase: true,
+    min:2,
+    max:50
   },
 
   Email: {
@@ -16,6 +17,7 @@ const UserSchema = mongoose.Schema({
     required: true,
     unique: true,
     match: /^\S+@\S+\.\S+$/,
+    max:50
   },
 
   Password: {
@@ -24,6 +26,20 @@ const UserSchema = mongoose.Schema({
     min: 6,
   },
 
+  picturePath:{
+    type: String,
+    default:"",
+  },
+
+  friends:{
+    type: Array,
+    default:[]
+  },
+
+  location: String,
+  viewedProfile: Number,
+  impressions: Number,
+
   blogs: [
     { 
       type: mongoose.Types.ObjectId, 
@@ -31,7 +47,9 @@ const UserSchema = mongoose.Schema({
       required: true 
     }
   ],
-});
+
+},
+{timestamps:true});
 
 const UserData = mongoose.model("UserData", UserSchema);
 export default UserData;

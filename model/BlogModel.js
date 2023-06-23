@@ -13,13 +13,15 @@ const blogSchema = new Schema({
     type: String,
     required: true,
   },
+
   description: {
     type: String,
     required: true,
   },
+
   image: {
     type: String,
-    required: true,
+    default:""
   },
 
   // foreign key relationship
@@ -29,11 +31,7 @@ const blogSchema = new Schema({
     required: true,
   },
 
-  CreatedDate: {
-    type: Date,
-    default: Date.now,
-  },
-});
+},{timestamps:true});
 
 const commentSchema = new Schema({
 
@@ -52,7 +50,7 @@ const commentSchema = new Schema({
     ref: "BlogData",
     required: true,
   },
-})
+},{timestamps:true})
 
 const likeSchema = new Schema({
   user: {
@@ -66,7 +64,7 @@ const likeSchema = new Schema({
     ref: "BlogData",
     required: true,
   },
-})
+},{timestamps:true})
 
 // "BlogData" => DB collection name
 const BlogData = mongoose.model("BlogData", blogSchema);

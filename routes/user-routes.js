@@ -1,12 +1,17 @@
 import express from "express";
-import { getAllUser, login, signup, logout, verifyToken, refreshToken } from "../controllers/user-controller";
+import { login, logout, verifyToken, refreshToken, getUser,getAllUser ,getUserFriends,addRemoveFriend } from "../controllers/user-controller";
+
 
 const userRouter = express.Router();
 
-userRouter.post("/signup", signup);
 userRouter.post("/login", login);
 userRouter.post("/logout", logout);
-userRouter.get("/getUser", refreshToken,verifyToken, getAllUser);
-userRouter.get("/refresh", refreshToken, verifyToken, getAllUser);
+userRouter.get("/refresh", refreshToken, verifyToken, getUser);
+
+userRouter.get("/getUser", refreshToken,verifyToken, getUser);
+userRouter.get("/getAllUser", refreshToken,verifyToken, getAllUser);
+userRouter.get("/getUserFriends/:userId", refreshToken,verifyToken, getUserFriends);
+userRouter.post("/addRemoveFriend/:friendId", refreshToken,verifyToken,addRemoveFriend);
+
 
 export default userRouter;
