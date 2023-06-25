@@ -209,12 +209,12 @@ const getUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User Not Found" });
     }
+
+    //return data to user
+    return res.status(200).json(user);
   } catch (err) {
     return res.status(200).json({ error: err.message });
   }
-
-  //return data to user
-  return res.status(200).json({ user });
 };
 
 const getAllUser = async (req, res) => {

@@ -90,26 +90,8 @@ export const getAllBlogs = async (req, res) => {
     if (blogs.length === 0) {
       return res.status(404).json({ message: "No Blogs Found" });
     }
-
-    const formattedBlogs = blogs.map((blog) => {
-      const { _id, title, description, image, user } = blog;
-      const formattedUser = {
-        _id: user._id,
-        Name: user.Name,
-        Email: user.Email,
-        picturePath: user.picturePath,
-        friends: user.friends,
-        location: user.location,
-        viewedProfile: user.viewedProfile,
-        impressions: user.impressions,
-        blogs: user.blogs,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
-      return { _id, title, description, image, user: formattedUser };
-    });
-
-    return res.status(200).json({blogs:formattedBlogs});
+    
+    return res.status(200).json({blogs:blogs});
 
   } catch (err) {
     return res.status(500).json({error:err.message})
