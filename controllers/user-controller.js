@@ -30,7 +30,7 @@ const signup = async (req, res) => {
       viewedProfile: Math.floor(Math.random() * 10000),
       impressions: Math.floor(Math.random() * 10000),
     });
-
+    
     //save data in db
     const saveUser = await newUser.save();
 
@@ -40,6 +40,33 @@ const signup = async (req, res) => {
     res.status(201).json(saveUser);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+const updateUser = async (req, res) => {
+  try {
+    const { Name, Email, Password, picturePath, friends, location } = req.body;
+
+    const { userId } = req.params;
+    let updateUser = await UserData.findByIdAndUpdate(userId, {
+      Name,
+      Email,
+      Password,
+      picturePath,
+      friends,
+      location,
+    });
+
+    if (!updateUser) {
+      return res
+        .status(404)
+        .json({ error: "Unable To Update The User  No user found!" });
+    }
+
+    return res.status(200).json({updateUser})
+
+  } catch (err) {
+    return res.status(500).json({error:err.message});
   }
 };
 
@@ -70,7 +97,7 @@ const login = async (req, res, next) => {
       {
         expiresIn: "2hr",
       }
-    );
+    ); // it creates base64Url encode token
 
     //check if already has any token and remove that token from cookies
     if (req.cookies[`${existingUser._id}`]) {
@@ -79,14 +106,13 @@ const login = async (req, res, next) => {
 
     existingUser.Password = undefined;
 
-    //send token from cookies.
+    //add res token to cookies storage.
     res.cookie(String(existingUser._id), token, {
       path: "/",
-      expires: new Date(Date.now() + 10000 * 300), // 30 seconds
+      expires: new Date(Date.now() + 10000 * 60 * 5), // 30 seconds
       httpOnly: true,
       sameSite: "lax",
-      // secure:"true" // set secure true is most secure. user also not getting token from server
-    });
+        });
 
     res
       .status(200)
@@ -103,7 +129,7 @@ const logout = (req, res) => {
   //get old token from cookies
   // token=efscaw3524?s&sd
 
-  const prevToken = cookies?.split("=")[1]; // => ["token", "efscaw3524?s&sd"] => "efscaw3524?s&sd"
+  const prevToken = cookies?.split("=")[1]; // token=efscaw3524?s&sd => ["token", "efscaw3524?s&sd"] => "efscaw3524?s&sd"
 
   if (!prevToken) {
     return res.status(400).json({ message: "Couldn't find token" });
@@ -122,7 +148,7 @@ const logout = (req, res) => {
 // user Authorization
 const verifyToken = (req, res, next) => {
   try {
-    //get token from cookies
+    //get token from cookies storage
     const cookies = req.headers.cookie;
 
     //if cookies has value string split token from id
@@ -137,7 +163,7 @@ const verifyToken = (req, res, next) => {
       String(token),
       process.env.JWT_SECRET_KEY,
       (err, user) => {
-        if (err) {
+        if (err) { // catch err from server
           return res.status(400).json({ message: "Invalid Token" });
         }
 
@@ -146,7 +172,7 @@ const verifyToken = (req, res, next) => {
       }
     );
 
-    next(); // this will trigger next function ones this completed
+    next(); // this will trigger next function ones the above process completed
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -183,7 +209,7 @@ const refreshToken = (req, res, next) => {
       //send token from cookies
       res.cookie(String(user.id), token, {
         path: "/",
-        expires: new Date(Date.now() + 10000 * 300), // 30 seconds
+        expires: new Date(Date.now() + 10000 * 60 * 5), // 5 mins
         httpOnly: true,
         // sameSite: "strict", //not allows cross-site request. very safe
         sameSite: "lax", // allows GET only for cross-site request
@@ -377,6 +403,7 @@ const addRemoveFriend = async (req, res) => {
 
 export {
   signup,
+  updateUser,
   login,
   logout,
   verifyToken,

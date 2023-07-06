@@ -2,29 +2,37 @@ import mongoose from "mongoose";
 import BlogData from "../model/BlogModel";
 import UserData from "../model/UserModel";
 import { CommentData, LikeData } from "../model/BlogModel";
-
+import path from "path";
 
 export const addBlog = async (req, res) => {
   try {
-    const { title, description, image } = req.body;
+    const { title, description } = req.body;
 
-    const userId = req.id
+    const userId = req.id;
 
     //find existing user
     const existingUser = await UserData.findById(userId);
 
     if (!existingUser) {
-      return res
-        .status(404)
-        .json({ error: "Unable To FInd User By This ID" });
+      return res.status(404).json({ error: "Unable To FInd User By This ID" });
+    }
+
+    let imageUrl = ""; // Variable to store the file path
+
+    if (req.file) {
+      // File is uploaded
+      const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
+
+      // Construct the image URL using the base URL and the file path
+      imageUrl = new URL(req.file.path, basePath).href;
     }
 
     // create new blog obj
     const blog = new BlogData({
       title,
       description,
-      image,
-      user:userId
+      image:imageUrl,
+      user: userId,
     });
 
     //session is runtime server storage
@@ -46,10 +54,11 @@ export const addBlog = async (req, res) => {
     await session.commitTransaction();
 
     //  Instead of making an additional request to fetch the added blog separately, returning all blog data in a single response reduces the number of round trips between the client and the server. This can improve the overall performance and efficiency of the application.
-    const blogData = await BlogData.find()
+    const blogData = await BlogData.find();
     return res.status(201).json({ blogData });
   } catch (err) {
-    return res.status(500).json({error:err.message})  }
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 export const updateBlog = async (req, res) => {
@@ -72,10 +81,10 @@ export const updateBlog = async (req, res) => {
         .json({ error: "Unable To Update The BlogData No blog!" });
     }
 
-    const blogData = await BlogData.find()
-    return res.status(200).json({ blogData });
+    const blogData = await BlogData.find();
+    return res.status(200).json(blogData);
   } catch (err) {
-    return res.status(500).json({error:err.message})
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -85,22 +94,20 @@ export const getAllBlogs = async (req, res) => {
     // corresponding user data from the referenced "UserData" model. This allows you to retrieve the complete user information associated with each blog.
 
     //The find() method is one of the built-in query methods provided by Mongoose.which is an Object Data Modeling (ODM) library for MongoDB in Node.js
-    const blogs = await BlogData.find().populate("user"); // [{}]
-    
+    const blogs = await BlogData.find(); // [{}]
+
     if (blogs.length === 0) {
       return res.status(404).json({ message: "No Blogs Found" });
     }
-    
-    return res.status(200).json({blogs:blogs});
 
+    return res.status(200).json(blogs);
   } catch (err) {
-    return res.status(500).json({error:err.message})
+    return res.status(500).json({ error: err.message });
   }
-
 };
 
 export const getOneBlog = async (req, res) => {
-  const {blogId} = req.params;
+  const { blogId } = req.params;
 
   try {
     const blog = await BlogData.findById(blogId);
@@ -111,30 +118,28 @@ export const getOneBlog = async (req, res) => {
     blog.Password = undefined;
     return res.status(200).json({ blog });
   } catch (err) {
-    return res.status(500).json({error:err.message})
+    return res.status(500).json({ error: err.message });
   }
 };
 
 export const deleteBlog = async (req, res) => {
-const { blogId } = req.params
+  const { blogId } = req.params;
 
   try {
-    const blog = await BlogData.findByIdAndRemove(blogId).populate("user");
-    //blog = {user:id, {blogs:[id1,id2]}}
-
-    //remove() blog id removes entire blog
-    //pull particular blog
-    await blog.user.blogs.pull(blog);
-
-    //now save the changes
-    await blog.user.save();
+    const blog = await BlogData.findOneAndRemove({ _id: blogId }).populate(
+      "user"
+    );
 
     if (!blog) {
-      return res.status(404).json({ error: "Unable To Delete! no blog" });
+      return res.status(404).json({ error: "Unable To Delete! No blog found" });
     }
-    return res.status(200).json({ message: "Successfully Delete" });
+
+    await blog.user.blogs.pull(blog);
+    await blog.user.save();
+
+    return res.status(200).json({ message: "Successfully Deleted" });
   } catch (err) {
-    return res.status(500).json({error:err.message})
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -143,22 +148,22 @@ export const getOneUserBlogs = async (req, res) => {
 
   try {
     // populate is used return in res of all details in the user blogs
-    const userBlogs = await UserData.findById(userId)
+    const userBlogs = await UserData.findById(userId);
 
     if (!userBlogs) {
       return res.status(404).json({ error: "No BlogData Found" });
     }
     userBlogs.Password = undefined;
-    return res.status(200).json({ userBlogs: userBlogs });
+    return res.status(200).json(userBlogs);
   } catch (err) {
-    return res.status(500).json({error:err.message})
+    return res.status(500).json({ error: err.message });
   }
 };
 
 export const getAllComments = async (req, res) => {
   try {
     // populate is used to retrive user and blog information related to comments
-    const comments = await CommentData.find()
+    const comments = await CommentData.find();
     // find() method returns collection of array value
 
     // const likesWithSpecificCondition = await LikeData.find({ like: "something" });
@@ -167,9 +172,35 @@ export const getAllComments = async (req, res) => {
     if (!comments) {
       return res.status(404).json({ message: "No Comments Found" });
     }
-    return res.status(200).json({ comments });
+    return res.status(200).json(comments);
   } catch (err) {
-    return res.status(500).json({error:err.message})
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const getAllCommentsForBlog = async (req, res) => {
+  try {
+    const { blogId } = req.params;
+    const comments = await CommentData.find({ blog: blogId }).populate("user");
+
+    const updatedComments = comments.map((data) => {
+      data.user.Password = undefined;
+      return {
+        ...data._doc,
+        user: {
+          _id: data.user._id,
+          name: data.user.Name,
+          picturePath: data.user.picturePath,
+        },
+      };
+    });
+
+    if (!comments) {
+      return res.status(404).json({ message: "No Comments Found" });
+    }
+    return res.status(200).json(updatedComments);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -220,7 +251,7 @@ export const addComment = async (req, res) => {
 export const updateComment = async (req, res) => {
   try {
     const { comment } = req.body;
-    const { blogId, commentId} = req.params;
+    const { blogId, commentId } = req.params;
     const userId = req.id;
 
     const user = await UserData.findById(userId);
@@ -255,12 +286,13 @@ export const updateComment = async (req, res) => {
 
     return res.status(200).json({ updatedComment });
   } catch (err) {
-    return res.status(500).json({error:err.message})  }
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 export const deleteComment = async (req, res) => {
   try {
-    const { commentId } = req.params;
+    const { commentId } = req.params  ;
 
     // Find the comment by ID and delete it
     const deletedComment = await CommentData.findByIdAndDelete(commentId);
@@ -273,38 +305,7 @@ export const deleteComment = async (req, res) => {
     // Comment successfully deleted
     return res.status(200).json({ message: "Comment deleted" });
   } catch (err) {
-    return res.status(500).json({error:err.message})  }
-};
-
-export const getAllLikes = async (req, res) => {
-  try {
-    const likes = await LikeData.find()
-
-    if (!likes) {
-      return res.status(404).json({ error: "No Comments Found" });
-    }
-    return res.status(200).json({ likes });
-  } catch (err) {
-    return res.status(500).json({error:err.message})
-  }
-};
-
-export const getallLikesForUser = async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Find the like for the specified user
-    const like = await LikeData.find({ user: userId });
-
-    // If the like doesn't exist, return an error response
-    if (!like) {
-      return res.status(404).json({ error: "Like not found for this user" });
-    }
-
-    // Return the like for the user
-    return res.status(200).json({ like });
-  } catch (err) {
-    return res.status(500).json({error:err.message})
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -317,35 +318,73 @@ export const addRemoveLike = async (req, res) => {
     const blogData = await BlogData.findById(blog);
 
     if (!blogData) {
-      return res
-        .status(404)
-        .json({ error: `No Blog Found with this ID` });
+      return res.status(404).json({ error: `No Blog Found with this ID` });
     }
 
     if (!userData) {
-      return res
-        .status(404)
-        .json({ error: "No User Found with this user ID" });
+      return res.status(404).json({ error: "No User Found with this user ID" });
     }
-
-    // Create a new CommentData instance
-    const addLike = new LikeData({
-      user, 
-      blog
-    });
 
     const isLiked = await LikeData.findOne({ user, blog });
 
     if (isLiked) {
+      //if already liked unlike
       await LikeData.findByIdAndDelete(isLiked._id);
-      res.status(200).json({ message: "un liked" });
+      res.status(200).json({ message: "unliked" });
     } else {
+      const addLike = new LikeData({ user, blog });
       await addLike.save();
+
+      // Fetch the updated like object from the database
+      const updatedLike = await LikeData.findById(addLike._id);
       await blogData.save(); // update in blogData
-      res.status(200).json({addLike, message:"liked"});
+      res.status(200).json({ like: updatedLike, message: "liked" });
     }
-  
   } catch (err) {
-    res.status(500).json({ error: err.message});
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getallLikesForBlog = async (req, res) => {
+  try {
+    const { blogId } = req.params;
+
+    // Find the like for the specified user
+    const likes = await LikeData.find({ blog: blogId });
+
+    // If the like doesn't exist, return an error response
+    if (!likes) {
+      return res.status(404).json({ error: "Like not found for this user" });
+    }
+
+    const updatedlikes = likes.map((data) => {
+      data.user.Password = undefined;
+      return {
+        ...data._doc,
+        user: {
+          _id: data.user._id,
+          name: data.user.Name,
+          picturePath: data.user.picturePath,
+        },
+      };
+    });
+
+    // Return the like for the user
+    return res.status(200).json(updatedlikes);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const getAllLikes = async (req, res) => {
+  try {
+    const likes = await LikeData.find();
+
+    if (!likes) {
+      return res.status(404).json({ error: "No Comments Found" });
+    }
+    return res.status(200).json({ likes });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 };
