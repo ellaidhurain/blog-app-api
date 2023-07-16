@@ -18,13 +18,14 @@ export const addBlog = async (req, res) => {
     }
 
     let imageUrl = ""; // Variable to store the file path
-
     if (req.file) {
+     
       // File is uploaded
       const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
 
       // Construct the image URL using the base URL and the file path
-      imageUrl = new URL(req.file.path, basePath).href;
+      imageUrl = `${basePath}/api/blog/image/${req.file.filename}` // this is for public dir
+      //  imageUrl = new URL(`/api/blog/image/${req.file.filename}`, basePath).href; // this is for db
     }
 
     // create new blog obj
@@ -55,7 +56,7 @@ export const addBlog = async (req, res) => {
 
     //  Instead of making an additional request to fetch the added blog separately, returning all blog data in a single response reduces the number of round trips between the client and the server. This can improve the overall performance and efficiency of the application.
     const blogData = await BlogData.find();
-    return res.status(201).json({ blogData });
+    return res.status(201).json({ blog });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -63,17 +64,32 @@ export const addBlog = async (req, res) => {
 
 export const updateBlog = async (req, res) => {
   try {
-    const { title, description, image, user } = req.body;
+    const { title, description } = req.body;
+
+    const userId = req.id;
 
     // if you have the route like /update/:id, then the “id” property is available as req.params.id.
     const blogId = req.params.blogId;
+    
+    let imageUrl;
+
+    if (req.file) {
+      
+      // File is uploaded
+      const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
+
+      // Construct the image URL using the base URL and the file path
+      // imageUrl = `${basePath}/api/blog/image/${req.file.id}`
+      imageUrl = new URL(`/api/blog/image/${req.file.filename}`, basePath).href;
+    }
 
     const blog = await BlogData.findByIdAndUpdate(blogId, {
       title,
       description,
-      image,
-      user,
+      image:imageUrl,
+      user:userId,
     });
+
 
     if (!blog) {
       return res

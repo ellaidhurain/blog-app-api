@@ -109,7 +109,7 @@ const login = async (req, res, next) => {
     //add res token to cookies storage.
     res.cookie(String(existingUser._id), token, {
       path: "/",
-      expires: new Date(Date.now() + 10000 * 60 * 5), // 30 seconds
+      expires: new Date(Date.now() + 100000 * 60 * 5), // 30 seconds
       httpOnly: true,
       sameSite: "lax",
         });
@@ -209,9 +209,8 @@ const refreshToken = (req, res, next) => {
       //send token from cookies
       res.cookie(String(user.id), token, {
         path: "/",
-        expires: new Date(Date.now() + 10000 * 60 * 5), // 5 mins
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         httpOnly: true,
-        // sameSite: "strict", //not allows cross-site request. very safe
         sameSite: "lax", // allows GET only for cross-site request
         // secure:"true"
       });
@@ -230,7 +229,7 @@ const getUser = async (req, res) => {
   const userId = req.id; // logged user id
   try {
     //find data for that id from db
-    const user = await UserData.findById(userId, "-password");
+    const user = await UserData.findById(userId, "-password").populate("blogs");
     user.Password = undefined;
     if (!user) {
       return res.status(404).json({ message: "User Not Found" });
