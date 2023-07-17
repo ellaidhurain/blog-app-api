@@ -39,6 +39,7 @@ const UserSchema = mongoose.Schema({
   location: String,
   viewedProfile: Number,
   impressions: Number,
+  about:String,
 
   blogs: [
     { 

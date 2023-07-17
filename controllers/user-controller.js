@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 
 const signup = async (req, res) => {
   try {
-    const { Name, Email, Password, picturePath, friends, location } = req.body;
+    const { Name, Email, Password, picturePath, friends, location, about } = req.body;
 
     //handle already registered email using mongo db obj
     const emailExist = await UserData.findOne({ Email: Email });
@@ -27,6 +27,7 @@ const signup = async (req, res) => {
       picturePath,
       friends,
       location,
+      about,
       viewedProfile: Math.floor(Math.random() * 10000),
       impressions: Math.floor(Math.random() * 10000),
     });
@@ -113,7 +114,7 @@ const login = async (req, res, next) => {
       httpOnly: true,
       sameSite: "None",
       withCredentials: true,
-      secure:true,
+      secure:true, 
         });
 
     res
