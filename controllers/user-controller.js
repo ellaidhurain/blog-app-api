@@ -5,7 +5,8 @@ import mongoose from "mongoose";
 
 const signup = async (req, res) => {
   try {
-    const { Name, Email, Password, picturePath, friends, location, about } = req.body;
+    const { Name, Email, Password, picturePath, friends, location, about } =
+      req.body;
 
     //handle already registered email using mongo db obj
     const emailExist = await UserData.findOne({ Email: Email });
@@ -31,7 +32,7 @@ const signup = async (req, res) => {
       viewedProfile: Math.floor(Math.random() * 10000),
       impressions: Math.floor(Math.random() * 10000),
     });
-    
+
     //save data in db
     const saveUser = await newUser.save();
 
@@ -41,33 +42,6 @@ const signup = async (req, res) => {
     res.status(201).json(saveUser);
   } catch (err) {
     res.status(500).json({ error: err.message });
-  }
-};
-
-const updateUser = async (req, res) => {
-  try {
-    const { Name, Email, Password, picturePath, friends, location } = req.body;
-
-    const { userId } = req.params;
-    let updateUser = await UserData.findByIdAndUpdate(userId, {
-      Name,
-      Email,
-      Password,
-      picturePath,
-      friends,
-      location,
-    });
-
-    if (!updateUser) {
-      return res
-        .status(404)
-        .json({ error: "Unable To Update The User  No user found!" });
-    }
-
-    return res.status(200).json({updateUser})
-
-  } catch (err) {
-    return res.status(500).json({error:err.message});
   }
 };
 
@@ -114,8 +88,8 @@ const login = async (req, res, next) => {
       httpOnly: true,
       sameSite: "None",
       withCredentials: true,
-      secure:true, 
-        });
+      secure: true,
+    });
 
     res
       .status(200)
@@ -166,7 +140,8 @@ const verifyToken = (req, res, next) => {
       String(token),
       process.env.JWT_SECRET_KEY,
       (err, user) => {
-        if (err) { // catch err from server
+        if (err) {
+          // catch err from server
           return res.status(400).json({ message: "Invalid Token" });
         }
 
@@ -221,6 +196,35 @@ const refreshToken = (req, res, next) => {
       req.id = user.id;
       next();
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const updateUser = async (req, res) => {
+  try {
+    const { Name, Email, location, about } = req.body;
+    const {userId} = req.params;
+    console.log(userId);
+    const updatedUser = await UserData.findByIdAndUpdate(
+      userId,
+      {
+        Name,
+        Email,
+        location,
+        about,
+      },
+      { new: true } // Ensure that the updated user data is returned
+    );
+
+    if (!updatedUser) {
+      res.status(404).json({ error: "user not found" });
+    }
+
+    // Exclude the password field from the response
+    updatedUser.Password = undefined;
+
+    res.status(201).json(updatedUser);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
