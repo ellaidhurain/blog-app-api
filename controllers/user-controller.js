@@ -5,8 +5,7 @@ import mongoose from "mongoose";
 
 const signup = async (req, res) => {
   try {
-    const { Name, Email, Password, picturePath, friends, location, about } =
-      req.body;
+    const { Name, Email, Password } = req.body;
 
     //handle already registered email using mongo db obj
     const emailExist = await UserData.findOne({ Email: Email });

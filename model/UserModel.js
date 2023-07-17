@@ -1,4 +1,3 @@
-// const { number } = require("joi");
 import mongoose from "mongoose";
 
 //A schema is a JSON object that defines the the structure and contents of your data.
@@ -28,7 +27,7 @@ const UserSchema = mongoose.Schema({
 
   picturePath:{
     type: String,
-    default:"",
+    default:null,
   },
 
   friends:{
@@ -36,10 +35,17 @@ const UserSchema = mongoose.Schema({
     default:[]
   },
 
-  location: String,
+  location: {
+    type: String,
+    default:null
+  },
+  about:{
+    type: String,
+    default:null
+  },
   viewedProfile: Number,
   impressions: Number,
-  about:String,
+  
 
   blogs: [
     { 
