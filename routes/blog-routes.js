@@ -22,6 +22,7 @@ const blogRouter = express.Router();
 blogRouter.get("/getAllBlogs", refreshToken, verifyToken, getAllBlogs);
 blogRouter.get("/refreshBlog", refreshToken, verifyToken, getAllBlogs);
 blogRouter.get("/getOneBlog/:blogId", refreshToken, verifyToken, getOneBlog);
+blogRouter.get("/updateBlog/:blogId", refreshToken, verifyToken, updateBlog);
 blogRouter.delete("/deleteOneBlog/:blogId", refreshToken,verifyToken, deleteBlog);
 blogRouter.get("/getOneUserBlogs/:userId", refreshToken,verifyToken, getOneUserBlogs);
 
