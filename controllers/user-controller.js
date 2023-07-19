@@ -46,7 +46,7 @@ const login = async (req, res, next) => {
 
   try {
     //verify email has registered
-    const existingUser = await UserData.findOne({ Email: Email })
+    const existingUser = await UserData.findOne({ Email: Email });
 
     //check email is valid
     if (!existingUser) {
@@ -199,17 +199,17 @@ const refreshToken = (req, res, next) => {
 const updateUser = async (req, res) => {
   try {
     const { Name, Email, location, about } = req.body;
-    const {userId} = req.params;
+    const { userId } = req.params;
     const updatedUser = await UserData.findByIdAndUpdate(
       userId,
       {
         Name,
         Email,
         location,
-        about,  
+        about,
       },
       { new: true } // Ensure that the updated user data is returned
-    ).select('-Password'); // remove password from response
+    ).select("-Password"); // remove password from response
 
     if (!updatedUser) {
       res.status(404).json({ error: "user not found" });
@@ -223,24 +223,23 @@ const updateUser = async (req, res) => {
 
 const updateProfileImage = async (req, res) => {
   try {
-    const  { userId }= req.params;
+    const { userId } = req.params;
     let imageUrl;
     if (req.file) {
-      
       // File is uploaded
       const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL => http://localhost:5000
 
       // Construct the image URL using the base URL and the file path
-      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`
+      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`;
     }
 
-    const updatedUser  = await UserData.findByIdAndUpdate(
+    const updatedUser = await UserData.findByIdAndUpdate(
       userId,
       {
-        picturePath:imageUrl
+        picturePath: imageUrl,
       },
       { new: true } // Ensure that the updated user data is returned
-    ).select('-Password');
+    ).select("-Password");
 
     if (!updatedUser) {
       res.status(404).json({ error: "user not found" });
@@ -249,6 +248,45 @@ const updateProfileImage = async (req, res) => {
     res.status(200).json(updatedUser);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+const updatePassword = async (req, res) => {
+  try {
+    const userId = req.id;
+    const { Password } = req.body;
+
+    const user = await UserData.findById(userId).exec();
+
+    if (!user) {
+      return res.status(404).json({ error: "user not found" });
+    }
+    const [oldPassword, newPassword] = Password.split("|");
+  
+    const isOldPasswordMatch = bcrypt.compareSync(oldPassword, user.Password);
+
+    if (!isOldPasswordMatch) {
+      return res.status(400).json({ error: "Old password is incorrect" });
+    }
+
+    if (oldPassword === newPassword) {
+      return res
+        .status(400)
+        .json({
+          error: "New password must be different from the old password",
+        });
+    }
+
+    // Hash the new password before saving it
+    const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+
+    user.Password = hashedNewPassword;
+
+    await user.save();
+
+    return res.status(200).json({ message: "password changed successfully" });
+  } catch (err) {
+    res.status(500).json(err);
   }
 };
 
@@ -314,7 +352,7 @@ const getAllUser = async (req, res) => {
 
 const getUserFriends = async (req, res) => {
   try {
-    const  userId  = req.id;
+    const userId = req.id;
 
     // const id = req.id;
     const user = await UserData.findById(userId);
@@ -347,7 +385,7 @@ const getUserFriends = async (req, res) => {
   }
 };
 
-const getFriendRequests = () => async (req, res) =>{
+const getFriendRequests = async (req, res) => {
   try {
     const userId = req.id;
     const user = await UserData.findById(userId);
@@ -362,6 +400,10 @@ const getFriendRequests = () => async (req, res) =>{
       friendRequests.push(request);
     }
 
+    if (!user.friendRequests) {
+      user.friendRequests = [];
+    }
+
     // show particular details only in response
     const formattedFriends = friendRequests.map(
       ({ _id, Name, location, picturePath }) => {
@@ -373,8 +415,7 @@ const getFriendRequests = () => async (req, res) =>{
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-
-}
+};
 
 const sendFriendRequest = async (req, res) => {
   try {
@@ -398,9 +439,7 @@ const sendFriendRequest = async (req, res) => {
 
     // Check if the friend request has already been sent
     if (friend.friendRequests.includes(userId)) {
-      return res
-        .status(400)
-        .json({ message: `Friend request already sent` });
+      return res.status(400).json({ message: `Friend request already sent` });
     }
 
     // Add the friendId to the FriendRequests array of the user
@@ -443,9 +482,7 @@ const acceptFriendRequest = async (req, res) => {
     }
 
     // Remove the friendId from the sentFriendRequests array of the user
-    user.friendRequests = user.friendRequests.filter(
-      (id) => id !== friendId
-    );
+    user.friendRequests = user.friendRequests.filter((id) => id !== friendId);
 
     // Add the friendId to the friends array of the user and the userId to the friends array of the friend
     user.friends.push(friendId);
@@ -499,14 +536,14 @@ const rejectFriendRequest = async (req, res) => {
     }
 
     // Remove the friendId from the sentFriendRequests array of the user
-    user.friendRequests = user.friendRequests.filter(
-      (id) => id !== friendId
-    );
+    user.friendRequests = user.friendRequests.filter((id) => id !== friendId);
 
     // Save the user object with the updated sentFriendRequests
     await user.save();
 
-    res.status(200).json({ message: `Friend request from ${friendId} rejected` });
+    res
+      .status(200)
+      .json({ message: `Friend request from ${friendId} rejected` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -540,9 +577,7 @@ const removeFriend = async (req, res) => {
     }
 
     // Remove the friendId from the sentFriendRequests array of the user
-    user.friends = user.friends.filter(
-      (id) => id !== friendId
-    );
+    user.friends = user.friends.filter((id) => id !== friendId);
 
     // Save the user object with the updated sentFriendRequests
     await user.save();
@@ -552,8 +587,6 @@ const removeFriend = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
 
 export {
   signup,
@@ -566,9 +599,10 @@ export {
   getAllUser,
   getUserFriends,
   updateProfileImage,
+  updatePassword,
   sendFriendRequest,
   acceptFriendRequest,
   rejectFriendRequest,
   getFriendRequests,
-  removeFriend
+  removeFriend,
 };

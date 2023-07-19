@@ -14,7 +14,8 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
   getFriendRequests,
-  removeFriend
+  removeFriend,
+  updatePassword
 } from "../controllers/user-controller";
 
 const userRouter = express.Router();
@@ -63,6 +64,12 @@ userRouter.post(
   refreshToken,
   verifyToken,
   removeFriend
+);
+userRouter.put(
+  "/updatePassword",
+  refreshToken,
+  verifyToken,
+  updatePassword
 );
 
 export default userRouter;
