@@ -77,10 +77,9 @@ export const updateBlog = async (req, res) => {
       
       // File is uploaded
       const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
-
+      
       // Construct the image URL using the base URL and the file path
-      // imageUrl = `${basePath}/api/blog/image/${req.file.id}`
-      imageUrl = new URL(`/api/blog/image/${req.file.filename}`, basePath).href;
+      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`
     }
 
     const blog = await BlogData.findByIdAndUpdate(blogId, {
@@ -110,7 +109,7 @@ export const getAllBlogs = async (req, res) => {
     // corresponding user data from the referenced "UserData" model. This allows you to retrieve the complete user information associated with each blog.
 
     //The find() method is one of the built-in query methods provided by Mongoose.which is an Object Data Modeling (ODM) library for MongoDB in Node.js
-    const blogs = await BlogData.find(); // [{}]
+    const blogs = await BlogData.find().populate("user","Name picturePath location") // [{}]
 
     if (blogs.length === 0) {
       return res.status(404).json({ message: "No Blogs Found" });

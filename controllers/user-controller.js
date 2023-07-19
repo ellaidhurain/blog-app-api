@@ -24,10 +24,6 @@ const signup = async (req, res) => {
       Email: Email,
       Password: hash,
       blogs: [],
-      picturePath,
-      friends,
-      location,
-      about,
       viewedProfile: Math.floor(Math.random() * 10000),
       impressions: Math.floor(Math.random() * 10000),
     });
@@ -50,7 +46,7 @@ const login = async (req, res, next) => {
 
   try {
     //verify email has registered
-    const existingUser = await UserData.findOne({ Email: Email });
+    const existingUser = await UserData.findOne({ Email: Email })
 
     //check email is valid
     if (!existingUser) {
@@ -204,26 +200,53 @@ const updateUser = async (req, res) => {
   try {
     const { Name, Email, location, about } = req.body;
     const {userId} = req.params;
-    console.log(userId);
     const updatedUser = await UserData.findByIdAndUpdate(
       userId,
       {
         Name,
         Email,
         location,
-        about,
+        about,  
       },
       { new: true } // Ensure that the updated user data is returned
-    );
+    ).select('-Password'); // remove password from response
 
     if (!updatedUser) {
       res.status(404).json({ error: "user not found" });
     }
 
-    // Exclude the password field from the response
-    updatedUser.Password = undefined;
-
     res.status(201).json(updatedUser);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const updateProfileImage = async (req, res) => {
+  try {
+    const  { userId }= req.params;
+    let imageUrl;
+    if (req.file) {
+      
+      // File is uploaded
+      const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL => http://localhost:5000
+
+      // Construct the image URL using the base URL and the file path
+      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`
+    }
+
+    const updatedUser  = await UserData.findByIdAndUpdate(
+      userId,
+      {
+        picturePath:imageUrl
+      },
+      { new: true } // Ensure that the updated user data is returned
+    ).select('-Password');
+
+    if (!updatedUser) {
+      res.status(404).json({ error: "user not found" });
+    }
+
+    res.status(200).json(updatedUser);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -291,7 +314,7 @@ const getAllUser = async (req, res) => {
 
 const getUserFriends = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const  userId  = req.id;
 
     // const id = req.id;
     const user = await UserData.findById(userId);
@@ -311,6 +334,7 @@ const getUserFriends = async (req, res) => {
       friends.push(friend);
     }
 
+    // show particular details only in response
     const formattedFriends = friends.map(
       ({ _id, Name, location, picturePath }) => {
         return { _id, Name, location, picturePath };
@@ -323,21 +347,39 @@ const getUserFriends = async (req, res) => {
   }
 };
 
-const addRemoveFriend = async (req, res) => {
+const getFriendRequests = () => async (req, res) =>{
+  try {
+    const userId = req.id;
+    const user = await UserData.findById(userId);
+
+    if (!user) {
+      res.status(404).json({ error: "user with this id not found" });
+    }
+
+    const friendRequests = [];
+    for (const id of user.friendRequests) {
+      const request = await UserData.findById(id);
+      friendRequests.push(request);
+    }
+
+    // show particular details only in response
+    const formattedFriends = friendRequests.map(
+      ({ _id, Name, location, picturePath }) => {
+        return { _id, Name, location, picturePath };
+      }
+    );
+
+    res.status(200).json(formattedFriends);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+
+}
+
+const sendFriendRequest = async (req, res) => {
   try {
     const userId = req.id;
     const { friendId } = req.params;
-
-    // Validate userId and friendId
-    if (!mongoose.isValidObjectId(userId)) {
-      return res.status(400).json({ message: `Invalid user ID: ${userId}` });
-    }
-
-    if (!mongoose.isValidObjectId(friendId)) {
-      return res
-        .status(400)
-        .json({ message: `Invalid friend ID: ${friendId}` });
-    }
 
     const user = await UserData.findById(userId);
     const friend = await UserData.findById(friendId);
@@ -354,20 +396,64 @@ const addRemoveFriend = async (req, res) => {
         .json({ message: `No friend found with ID: ${friendId}` });
     }
 
-    // if already a friend, remove id from friends array
-    if (user.friends.includes(friendId)) {
-      user.friends = user.friends.filter((id) => id !== friendId);
-      friend.friends = friend.friends.filter((id) => id !== userId);
-    } else {
-      // add to friend list
-      user.friends.push(friendId);
-      friend.friends.push(userId);
+    // Check if the friend request has already been sent
+    if (friend.friendRequests.includes(userId)) {
+      return res
+        .status(400)
+        .json({ message: `Friend request already sent` });
     }
+
+    // Add the friendId to the FriendRequests array of the user
+    friend.friendRequests.push(userId);
+
+    // Save the user object with the updated sentFriendRequests
+    await friend.save();
+
+    res.status(200).json({ message: `Friend request sent` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const acceptFriendRequest = async (req, res) => {
+  try {
+    const userId = req.id;
+    const { friendId } = req.params;
+
+    const user = await UserData.findById(userId);
+    const friend = await UserData.findById(friendId);
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: `No user found with ID: ${userId}` });
+    }
+
+    if (!friend) {
+      return res
+        .status(404)
+        .json({ message: `No friend found with ID: ${friendId}` });
+    }
+
+    // Check if the friendId is present in the sentFriendRequests array of the user
+    if (!user.friendRequests.includes(friendId)) {
+      return res
+        .status(400)
+        .json({ message: `No friend request found from ${friendId}` });
+    }
+
+    // Remove the friendId from the sentFriendRequests array of the user
+    user.friendRequests = user.friendRequests.filter(
+      (id) => id !== friendId
+    );
+
+    // Add the friendId to the friends array of the user and the userId to the friends array of the friend
+    user.friends.push(friendId);
+    friend.friends.push(userId);
 
     // Update user and friend objects within a transaction
     const session = await UserData.startSession();
     session.startTransaction();
-    //  transaction using a session to ensure atomicity and consistency when updating the user and friend objects
     try {
       await user.save({ session });
       await friend.save({ session });
@@ -379,32 +465,95 @@ const addRemoveFriend = async (req, res) => {
       throw error;
     }
 
-    // Fetch and format updated friends
-    const updatedUser = await UserData.findById(userId);
-    //$in: This is a MongoDB operator used to specify an array of values to match. In this case, we're using $in to match documents where the _id value is present in the updatedUser.friends array.
-    // So, the query effectively finds all documents in the UserData collection where the _id value is present in the updatedUser.friends array.
-    const updatedFriends = await UserData.find({
-      _id: { $in: updatedUser.friends },
-    });
-    const formattedFriends = updatedFriends.map(
-      ({ _id, Name, location, picturePath }) => {
-        return { _id, Name, location, picturePath };
-      }
-    );
-
-    //  const updatedFriends = [];
-    //  for (const friendId of updatedUser.friends) {
-    //   const friend = await UserData.findOne({ _id: friendId });
-    //   if (friend) {
-    //     updatedFriends.push(friend);
-    //   }
-    // }
-
-    res.status(200).json(formattedFriends);
+    res.status(200).json({ message: `Friend request accepted` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
+const rejectFriendRequest = async (req, res) => {
+  try {
+    const userId = req.id;
+    const { friendId } = req.params;
+
+    const user = await UserData.findById(userId);
+    const friend = await UserData.findById(friendId);
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: `No user found with ID: ${userId}` });
+    }
+
+    if (!friend) {
+      return res
+        .status(404)
+        .json({ message: `No friend found with ID: ${friendId}` });
+    }
+
+    // Check if the friendId is present in the sentFriendRequests array of the user
+    if (!user.friendRequests.includes(friendId)) {
+      return res
+        .status(400)
+        .json({ message: `No friend request found from ${friendId}` });
+    }
+
+    // Remove the friendId from the sentFriendRequests array of the user
+    user.friendRequests = user.friendRequests.filter(
+      (id) => id !== friendId
+    );
+
+    // Save the user object with the updated sentFriendRequests
+    await user.save();
+
+    res.status(200).json({ message: `Friend request from ${friendId} rejected` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const removeFriend = async (req, res) => {
+  try {
+    const userId = req.id;
+    const { friendId } = req.params;
+
+    const user = await UserData.findById(userId);
+    const friend = await UserData.findById(friendId);
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: `No user found with ID: ${userId}` });
+    }
+
+    if (!friend) {
+      return res
+        .status(404)
+        .json({ message: `No friend found with ID: ${friendId}` });
+    }
+
+    // Check if the friendId is present in the sentFriendRequests array of the user
+    if (!user.friends.includes(friendId)) {
+      return res
+        .status(400)
+        .json({ message: `No friend request found from ${friendId}` });
+    }
+
+    // Remove the friendId from the sentFriendRequests array of the user
+    user.friends = user.friends.filter(
+      (id) => id !== friendId
+    );
+
+    // Save the user object with the updated sentFriendRequests
+    await user.save();
+
+    res.status(200).json({ message: `Friend removed` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 
 export {
   signup,
@@ -416,5 +565,10 @@ export {
   getUser,
   getAllUser,
   getUserFriends,
-  addRemoveFriend,
+  updateProfileImage,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  getFriendRequests,
+  removeFriend
 };

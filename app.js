@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
-import blogRouter from "./routes/blog-routes";
-import userRouter from "./routes/user-routes";
+import blogRouter from "./urls/blog-urls";
+import userRouter from "./urls/user-urls";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv/config";
@@ -14,6 +14,7 @@ import bodyParser from "body-parser";
 import {
   refreshToken,
   signup,
+  updateProfileImage,
   verifyToken,
 } from "./controllers/user-controller";
 import { addBlog, updateBlog } from "./controllers/blog-controller";
@@ -160,9 +161,9 @@ app.get("/api/blog/image/:filename", (req, res) => {
 });
 
 // this routes should be present here because of image upload
-app.post("/api/user/signup", upload.single("image"), signup); 
 app.post("/api/blog/addBlog",refreshToken,verifyToken,upload.single("image"),addBlog);
 app.put("/api/blog/updateBlog/:blogId", refreshToken, verifyToken, upload.single("image"),updateBlog);
+app.put("/api/user/updateProfileImage/:userId",refreshToken, verifyToken,upload.single("picturePath"), updateProfileImage);
 
 
 app.use("/api/user", userRouter);
