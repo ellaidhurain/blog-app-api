@@ -81,7 +81,7 @@ const login = async (req, res, next) => {
       path: "/",
       expires: new Date(Date.now() + 100000 * 60 * 5), // 30 seconds
       httpOnly: true,
-      sameSite: "None",
+      sameSite: "none",
       withCredentials: true,
       secure: true,
     });

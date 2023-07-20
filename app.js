@@ -25,8 +25,6 @@ import Grid from "gridfs-stream";
 import crypto from "crypto";
 
 
-
-
 // CONFIGURATIONS TO STORE FILES IN FOLDER
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,7 +34,7 @@ const app = express();
 
 // middle-waresa
 // Allow all origins and include credentials (only for development)
-app.use(cors({
+app.use("*",cors({
   origin: true,
   credentials: true,
 }));
