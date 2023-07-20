@@ -34,9 +34,9 @@ const signup = async (req, res) => {
     // Exclude the password field from the response
     saveUser.Password = undefined;
 
-    res.status(201).json(saveUser);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(201).json({ message: "user created successfully" }, saveUser);
+  } catch (error) {
+    return res.status(500).json({error:error.message})
   }
 };
 
@@ -50,7 +50,7 @@ const login = async (req, res, next) => {
 
     //check email is valid
     if (!existingUser) {
-      res.status(404).json({ error: "user not found!" });
+      return res.status(404).json({ error: "user not found!" });
     }
 
     //check password is valid
@@ -86,35 +86,39 @@ const login = async (req, res, next) => {
       secure: true,
     });
 
-    res
+    return res
       .status(200)
       .json({ message: "Successfully Logged In", user: existingUser, token });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
 //logout is not creating new token. so user is redirected to login
 const logout = (req, res) => {
-  const cookies = req.headers.cookie;
+  try {
+    const cookies = req.headers.cookie;
 
-  //get old token from cookies
-  // token=efscaw3524?s&sd
+    //get old token from cookies
+    // token=efscaw3524?s&sd
 
-  const prevToken = cookies?.split("=")[1]; // token=efscaw3524?s&sd => ["token", "efscaw3524?s&sd"] => "efscaw3524?s&sd"
+    const prevToken = cookies?.split("=")[1]; // token=efscaw3524?s&sd => ["token", "efscaw3524?s&sd"] => "efscaw3524?s&sd"
 
-  if (!prevToken) {
-    return res.status(400).json({ message: "Couldn't find token" });
-  }
-
-  jwt.verify(String(prevToken), process.env.JWT_SECRET_KEY, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Authentication failed" });
+    if (!prevToken) {
+      return res.status(400).json({ message: "Couldn't find token" });
     }
-    res.clearCookie(`${user.id}`);
-    req.cookies[`${user.id}`] = "";
-    return res.status(200).json({ message: "Successfully Logged Out" });
-  });
+
+    jwt.verify(String(prevToken), process.env.JWT_SECRET_KEY, (err, user) => {
+      if (err) {
+        return res.status(403).json({ message: "Authentication failed" });
+      }
+      res.clearCookie(`${user.id}`);
+      req.cookies[`${user.id}`] = "";
+      return res.status(200).json({ message: "Successfully Logged Out" });
+    });
+  } catch (error) {
+    return res.status(500).json({error:error.message})
+  }
 };
 
 // user Authorization
@@ -146,8 +150,8 @@ const verifyToken = (req, res, next) => {
     );
 
     next(); // this will trigger next function ones the above process completed
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -191,8 +195,8 @@ const refreshToken = (req, res, next) => {
       req.id = user.id;
       next();
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -212,12 +216,12 @@ const updateUser = async (req, res) => {
     ).select("-Password"); // remove password from response
 
     if (!updatedUser) {
-      res.status(404).json({ error: "user not found" });
+      return res.status(404).json({ error: "user not found" });
     }
 
-    res.status(201).json(updatedUser);
+    return res.status(201).json(updatedUser);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -258,11 +262,11 @@ const updatePassword = async (req, res) => {
 
     const user = await UserData.findById(userId).exec();
 
-    if (!user) {
-      return res.status(404).json({ error: "user not found" });
-    }
+    // if (!user) {
+    //   return res.status(404).json({ error: "user not found" });
+    // }
     const [oldPassword, newPassword] = Password.split("|");
-  
+
     const isOldPasswordMatch = bcrypt.compareSync(oldPassword, user.Password);
 
     if (!isOldPasswordMatch) {
@@ -270,11 +274,9 @@ const updatePassword = async (req, res) => {
     }
 
     if (oldPassword === newPassword) {
-      return res
-        .status(400)
-        .json({
-          error: "New password must be different from the old password",
-        });
+      return res.status(400).json({
+        error: "New password must be different from the old password",
+      });
     }
 
     // Hash the new password before saving it
@@ -286,7 +288,7 @@ const updatePassword = async (req, res) => {
 
     return res.status(200).json({ message: "password changed successfully" });
   } catch (err) {
-    res.status(500).json(err);
+    return res.status(500).json(err);
   }
 };
 
@@ -304,8 +306,8 @@ const getUser = async (req, res) => {
 
     //return data to user
     return res.status(200).json(user);
-  } catch (err) {
-    return res.status(200).json({ error: err.message });
+  } catch (error) {
+    return res.status(200).json({ error: error.message });
   }
 };
 
@@ -344,9 +346,9 @@ const getAllUser = async (req, res) => {
       }
     );
     //return data to user
-    res.status(200).json(formattedUsers);
+    return res.status(200).json(formattedUsers);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -358,7 +360,7 @@ const getUserFriends = async (req, res) => {
     const user = await UserData.findById(userId);
 
     if (!user) {
-      res.status(404).json({ error: "user with this id not found" });
+      return res.status(404).json({ error: "user with this id not found" });
     }
 
     // we use Promise.all for get multiple request
@@ -379,9 +381,9 @@ const getUserFriends = async (req, res) => {
       }
     );
 
-    res.status(200).json(formattedFriends);
+    return res.status(200).json(formattedFriends);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -391,7 +393,7 @@ const getFriendRequests = async (req, res) => {
     const user = await UserData.findById(userId);
 
     if (!user) {
-      res.status(404).json({ error: "user with this id not found" });
+      return res.status(404).json({ error: "user with this id not found" });
     }
 
     const friendRequests = [];
@@ -411,9 +413,9 @@ const getFriendRequests = async (req, res) => {
       }
     );
 
-    res.status(200).json(formattedFriends);
+    return res.status(200).json(formattedFriends);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -448,9 +450,9 @@ const sendFriendRequest = async (req, res) => {
     // Save the user object with the updated sentFriendRequests
     await friend.save();
 
-    res.status(200).json({ message: `Friend request sent` });
+    return res.status(200).json({ message: `Friend request sent` });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -502,9 +504,9 @@ const acceptFriendRequest = async (req, res) => {
       throw error;
     }
 
-    res.status(200).json({ message: `Friend request accepted` });
+    return res.status(200).json({ message: `Friend request accepted` });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -541,11 +543,11 @@ const rejectFriendRequest = async (req, res) => {
     // Save the user object with the updated sentFriendRequests
     await user.save();
 
-    res
+    return res
       .status(200)
       .json({ message: `Friend request from ${friendId} rejected` });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -582,9 +584,9 @@ const removeFriend = async (req, res) => {
     // Save the user object with the updated sentFriendRequests
     await user.save();
 
-    res.status(200).json({ message: `Friend removed` });
+    return res.status(200).json({ message: `Friend removed` });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 

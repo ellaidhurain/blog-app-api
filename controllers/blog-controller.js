@@ -28,6 +28,10 @@ export const addBlog = async (req, res) => {
       //  imageUrl = new URL(`/api/blog/image/${req.file.filename}`, basePath).href; // this is for db
     }
 
+    if(!req.file){
+      return res.status(400).json("no file")
+    }
+
     // create new blog obj
     const blog = new BlogData({
       title,
@@ -257,9 +261,9 @@ export const addComment = async (req, res) => {
     */
     await blogId.save();
 
-    res.status(201).json({ message: "successfully comment added" });
+    return res.status(201).json({ message: "successfully comment added" });
   } catch (err) {
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -345,7 +349,7 @@ export const addRemoveLike = async (req, res) => {
     if (isLiked) {
       //if already liked unlike
       await LikeData.findByIdAndDelete(isLiked._id);
-      res.status(200).json({ message: "unliked" });
+      return res.status(200).json({ message: "unliked" });
     } else {
       const addLike = new LikeData({ user, blog });
       await addLike.save();
@@ -353,10 +357,10 @@ export const addRemoveLike = async (req, res) => {
       // Fetch the updated like object from the database
       const updatedLike = await LikeData.findById(addLike._id);
       await blogData.save(); // update in blogData
-      res.status(200).json({ like: updatedLike, message: "liked" });
+      return res.status(200).json({ like: updatedLike, message: "liked" });
     }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
