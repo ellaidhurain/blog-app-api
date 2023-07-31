@@ -32,9 +32,9 @@ const __dirname = path.dirname(__filename);
 // initialize express
 const app = express();
 
-// middle-waresa
+// middle-wares
 // Allow all origins and include credentials (only for development)
-app.use("*",cors({
+app.use(cors({
   origin: true,
   credentials: true,
 }));
@@ -182,6 +182,18 @@ mongoose
     // UserData.insertMany(users) // users => {} directly including bulk data
   })
   .catch((err) => console.log(`${err} did not connect`));
+
+// mongoose
+//   .connect(mongoURI, {
+//     useNewUrlParser: true,
+//     useUnifiedTopology: true,
+//   })
+//   .then(() => app.listen()) // No need to specify the port here
+//   .then(() => {
+//     console.log(`Connected DB and Listening on a dynamically assigned port`);
+//     // UserData.insertMany(users) // users => {} directly including bulk data
+//   })
+//   .catch((err) => console.log(`${err} did not connect`));
 
 // node js is open source server environment is used to run js on server
 // node js has its own http methods.

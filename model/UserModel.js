@@ -55,7 +55,7 @@ const UserSchema = mongoose.Schema({
   blogs: [
     { 
       type: mongoose.Types.ObjectId, 
-      ref: "BlogData", 
+      ref: "BlogData", // foreign key ref to BlogData model
       required: true 
     }
   ],

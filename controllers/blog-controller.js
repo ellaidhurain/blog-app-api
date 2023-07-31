@@ -2,13 +2,12 @@ import mongoose from "mongoose";
 import BlogData from "../model/BlogModel";
 import UserData from "../model/UserModel";
 import { CommentData, LikeData } from "../model/BlogModel";
-import path from "path";
 
 export const addBlog = async (req, res) => {
   try {
     const { title, description } = req.body;
 
-    const userId = req.id;
+    const userId = req.userId;
 
     //find existing user
     const existingUser = await UserData.findById(userId);
@@ -17,22 +16,22 @@ export const addBlog = async (req, res) => {
       return res.status(404).json({ error: "Unable To FInd User By This ID" });
     }
 
-    let imageUrl = ""; // Variable to store the file path
+    let imageUrl = null; 
     if (req.file) {
      
-      // File is uploaded
+      // create base path
       const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
 
-      // Construct the image URL using the base URL and the file path
+      // Construct the image URL using the base path and the file path
       imageUrl = `${basePath}/api/blog/image/${req.file.filename}` // this is for public dir
       //  imageUrl = new URL(`/api/blog/image/${req.file.filename}`, basePath).href; // this is for db
     }
 
     if(!req.file){
-      return res.status(400).json("no file")
+      return res.status(400).json("Please upload a file")
     }
 
-    // create new blog obj
+    // create new blog 
     const blog = new BlogData({
       title,
       description,
@@ -61,8 +60,8 @@ export const addBlog = async (req, res) => {
     //  Instead of making an additional request to fetch the added blog separately, returning all blog data in a single response reduces the number of round trips between the client and the server. This can improve the overall performance and efficiency of the application.
     const blogData = await BlogData.find();
     return res.status(201).json({ blog });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -70,7 +69,7 @@ export const updateBlog = async (req, res) => {
   try {
     const { title, description } = req.body;
 
-    const userId = req.id;
+    const  userId = req.userId;
 
     // if you have the route like /update/:id, then the “id” property is available as req.params.id.
     const blogId = req.params.blogId;
@@ -102,8 +101,8 @@ export const updateBlog = async (req, res) => {
 
     const blogData = await BlogData.find();
     return res.status(200).json(blogData);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -116,12 +115,12 @@ export const getAllBlogs = async (req, res) => {
     const blogs = await BlogData.find().populate("user","Name picturePath location") // [{}]
 
     if (blogs.length === 0) {
-      return res.status(404).json({ message: "No Blogs Found" });
+      return res.status(404).json({ error: "No Blogs Found" });
     }
 
     return res.status(200).json(blogs);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -136,8 +135,8 @@ export const getOneBlog = async (req, res) => {
     }
     blog.Password = undefined;
     return res.status(200).json({ blog });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -157,8 +156,8 @@ export const deleteBlog = async (req, res) => {
     await blog.user.save();
 
     return res.status(200).json({ message: "Successfully Deleted" });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -174,8 +173,8 @@ export const getOneUserBlogs = async (req, res) => {
     }
     userBlogs.Password = undefined;
     return res.status(200).json(userBlogs);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -192,8 +191,8 @@ export const getAllComments = async (req, res) => {
       return res.status(404).json({ message: "No Comments Found" });
     }
     return res.status(200).json(comments);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -218,8 +217,8 @@ export const getAllCommentsForBlog = async (req, res) => {
       return res.status(404).json({ message: "No Comments Found" });
     }
     return res.status(200).json(updatedComments);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -227,7 +226,7 @@ export const addComment = async (req, res) => {
   try {
     const { comment } = req.body;
     const blog = req.params.blogId;
-    const user = req.id;
+    const user = req.userId;
 
     const userId = await UserData.findById(user);
     const blogId = await BlogData.findById(blog);
@@ -235,13 +234,13 @@ export const addComment = async (req, res) => {
     if (!blogId) {
       return res
         .status(404)
-        .json({ message: "No Blog Found with this user ID" });
+        .json({ error: "No Blog Found with this user ID" });
     }
 
     if (!userId) {
       return res
         .status(404)
-        .json({ message: "No User Found with this user ID" });
+        .json({ error: "No User Found with this user ID" });
     }
 
     // Create a new CommentData instance
@@ -262,8 +261,8 @@ export const addComment = async (req, res) => {
     await blogId.save();
 
     return res.status(201).json({ message: "successfully comment added" });
-  } catch (err) {
-    return res.status(500).json({ message: "Internal server error" });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -271,7 +270,7 @@ export const updateComment = async (req, res) => {
   try {
     const { comment } = req.body;
     const { blogId, commentId } = req.params;
-    const userId = req.id;
+    const  userId = req.userId;
 
     const user = await UserData.findById(userId);
     const blog = await BlogData.findById(blogId);
@@ -280,19 +279,19 @@ export const updateComment = async (req, res) => {
     if (!blog) {
       return res
         .status(404)
-        .json({ message: "No Blog Found with this user ID" });
+        .json({ error: "No Blog Found with this user ID" });
     }
 
     if (!user) {
       return res
         .status(404)
-        .json({ message: "No User Found with this user ID" });
+        .json({ error: "No User Found with this user ID" });
     }
 
     if (!existingComment) {
       return res
         .status(404)
-        .json({ message: "No Comment Found with this comment ID" });
+        .json({ error: "No Comment Found with this comment ID" });
     }
 
     const updatedComment = await CommentData.findByIdAndUpdate(
@@ -304,34 +303,34 @@ export const updateComment = async (req, res) => {
     );
 
     return res.status(200).json({ updatedComment });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
 export const deleteComment = async (req, res) => {
   try {
-    const { commentId } = req.params  ;
+    const { commentId } = req.params;
 
     // Find the comment by ID and delete it
     const deletedComment = await CommentData.findByIdAndDelete(commentId);
 
     // If the comment doesn't exist, return an error response
     if (!deletedComment) {
-      return res.status(404).json({ message: "Comment not found" });
+      return res.status(404).json({ error: "Comment not found" });
     }
 
     // Comment successfully deleted
     return res.status(200).json({ message: "Comment deleted" });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
 export const addRemoveLike = async (req, res) => {
   try {
     const blog = req.params.blogId;
-    const user = req.id;
+    const user = req.userId;
 
     const userData = await UserData.findById(user);
     const blogData = await BlogData.findById(blog);
@@ -359,8 +358,8 @@ export const addRemoveLike = async (req, res) => {
       await blogData.save(); // update in blogData
       return res.status(200).json({ like: updatedLike, message: "liked" });
     }
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -390,8 +389,8 @@ export const getallLikesForBlog = async (req, res) => {
 
     // Return the like for the user
     return res.status(200).json(updatedlikes);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -403,7 +402,7 @@ export const getAllLikes = async (req, res) => {
       return res.status(404).json({ error: "No Comments Found" });
     }
     return res.status(200).json({ likes });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
