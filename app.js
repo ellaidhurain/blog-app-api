@@ -24,6 +24,8 @@ import { GridFsStorage } from "multer-gridfs-storage";
 import Grid from "gridfs-stream";
 import crypto from "crypto";
 
+import { GridFSBucket } from 'mongodb';
+
 
 // CONFIGURATIONS TO STORE FILES IN FOLDER
 const __filename = fileURLToPath(import.meta.url);
@@ -53,110 +55,82 @@ app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 // serve static files
 app.use("/public", express.static(path.join(__dirname, "public")));
 
-// FILE STORAGE WITH GRIDFS
-// storing files in mongoDB file storage system
-// Initialize GridFS
-// const conn = mongoose.connection;
-// let gfs;
+// local FILE STORAGE with multer
+// Multer: It is a middleware for handling multipart/form-data, which is commonly used for file uploads. It allows you to handle the file upload process easily.
+// Define the multer storage and file upload settings. storing files in project folder
 
-// conn.once("open", () => {
-//   // Initialize GridFS stream
-//   gfs = Grid(conn.db, mongoose.mongo);
+// handle storing files
+// const storage = multer.diskStorage({
+//   // Destination folder for uploaded files
+//   destination: function (req,file, cb) {
+//     cb(null, "public/assets");
+//   },
 
-//   // Create storage engine for GridFS
-//   const storage = new GridFsStorage({
-//     url: mongoURI,
-//     file: (req, file) => {
-//       return new Promise((resolve, reject) => {
-//         crypto.randomBytes(16, (err, buf) => {
-//           if (err) {
-//             return reject(err);
-//           }
-//           const filename =
-//             buf.toString("hex") + path.extname(file.originalname);
-//           const fileInfo = {
-//             filename: filename,
-//             bucketName: "uploads",
-//           };
-//           resolve(fileInfo);
-//         });
-//       });
-//     },
-//   });
+//   // Filename for uploaded files
+//   filename: function (req,file, cb) {
+//     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+//     const filename = `${uniqueSuffix}-${file.originalname}`;
 
-//   // Initialize multer with the storage settings
-  // const upload = multer({ storage });
+//     cb(null, filename); // Set the filename for the uploaded file
+//   },
+// });
+// // Initialize multer with the storage settings
 
-  // app.post("/api/user/signup", upload.single("image"), signup); // signup should be here
-  // app.post(
-  //   "/api/blog/addBlog",
-  //   refreshToken,
-  //   verifyToken,
-  //   upload.single("image"),
-  //   addBlog
-  // );
+// const upload = multer({ storage });
 
-  
-//   app.get("/api/blog/image/:id", async (req, res) => {
+// requests for retrieving and serving the image file
+// app.get("/api/blog/image/:filename", (req, res) => {
 //   try {
-//     const fileId = req.params.id; // Get the image ID from the URL parameters
+//     const filename = req.params.filename;
+//     const imagePath = path.join(__dirname, "public/assets", filename);
 
-//     // Find the file in the GridFS bucket by ID
-//     const file = await gfs.files.findOne({ _id: fileId });
-
-//     if (!file) {
-//       return res.status(404).json({ error: "File not found" });
-//     }
-
-//     // Set the appropriate content type for the response
-//     res.set("Content-Type", file.contentType);
-
-//     // Create a read stream from the GridFS bucket and pipe it to the response
-//     const readStream = gfs.createReadStream({ _id: fileId });
-//     readStream.pipe(res);
+//     res.sendFile(imagePath);
 //   } catch (err) {
 //     return res.status(500).json({ error: err.message });
 //   }
 // });
 
-// });
 
+// FILE STORAGE WITH mongoose GRIDFS
+// storing files in mongoDB file storage system
 
+// Import necessary modules and libraries
+const connection = mongoose.connection; // Mongoose connection instance
+let gfs; // GridFSBucket instance
 
-// FILE STORAGE with multer
-// Multer: It is a middleware for handling multipart/form-data, which is commonly used for file uploads. It allows you to handle the file upload process easily.
-// Define the multer storage and file upload settings. storing files in project folder
-
-// handle storing files
-const storage = multer.diskStorage({
-  // Destination folder for uploaded files
-  destination: function (req,file, cb) {
-    cb(null, "public/assets");
-  },
-
-  // Filename for uploaded files
-  filename: function (req,file, cb) {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-    const filename = `${uniqueSuffix}-${file.originalname}`;
-
-    cb(null, filename); // Set the filename for the uploaded file
-  },
+// Set up a one-time event listener for when the MongoDB connection is open
+connection.once('open', () => {
+  // Initialize GridFS stream using the open connection's database
+  gfs = new GridFSBucket(connection.db, { bucketName: 'uploads' });
 });
-// Initialize multer with the storage settings
 
-const upload = multer({ storage });
+// Set up multer storage for handling file uploads
+const storage = multer.memoryStorage(); // Store files in memory for processing
+const upload = multer({ storage }); // Initialize multer with the specified storage
 
-// requests for retrieving and serving the image file
-app.get("/api/blog/image/:filename", (req, res) => {
+
+// Define a route to retrieve and stream files from GridFS
+app.get('/api/blog/image/:fileId', (req, res) => {
   try {
-    const filename = req.params.filename;
-    const imagePath = path.join(__dirname, "public/assets", filename);
+    const fileId = req.params.fileId;
 
-    res.sendFile(imagePath);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    // Read file from GridFS and stream it to the response
+    const readStream = gfs.openDownloadStream(new mongoose.Types.ObjectId(fileId));
+
+    // Set up an error event listener for the read stream
+    readStream.on('error', (error) => {
+      console.error(error);
+      return res.status(500).json({ error: 'An error occurred' });
+    });
+
+    // Pipe the read stream to the response object to send the file to the client
+    readStream.pipe(res);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'An error occurred' });
   }
 });
+
 
 // this routes should be present here because of image upload
 app.post("/api/blog/addBlog",refreshToken,verifyToken,upload.single("image"),addBlog);
@@ -183,17 +157,9 @@ mongoose
   })
   .catch((err) => console.log(`${err} did not connect`));
 
-// mongoose
-//   .connect(mongoURI, {
-//     useNewUrlParser: true,
-//     useUnifiedTopology: true,
-//   })
-//   .then(() => app.listen()) // No need to specify the port here
-//   .then(() => {
-//     console.log(`Connected DB and Listening on a dynamically assigned port`);
-//     // UserData.insertMany(users) // users => {} directly including bulk data
-//   })
-//   .catch((err) => console.log(`${err} did not connect`));
+
+  
+
 
 // node js is open source server environment is used to run js on server
 // node js has its own http methods.

@@ -23,7 +23,6 @@ const userRouter = express.Router();
 userRouter.post("/login", login);
 userRouter.post("/signup", signup);
 userRouter.put("/updateUser", updateUser);
-userRouter.put("/updateProfileImage", updateProfileImage);
 userRouter.post("/logout", logout);
 // userRouter.get("/refresh", refreshToken);
 userRouter.get("/getUser", refreshToken, verifyToken, getUser);

@@ -234,7 +234,8 @@ const updateUser = async (req, res) => {
 
 const updateProfileImage = async (req, res) => {
   try {
-    const userId = req.userId;
+    const {userId} = req.params;
+    
     let imageUrl;
     if (req.file) {
       // File is uploaded

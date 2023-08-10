@@ -3,6 +3,38 @@ import BlogData from "../model/BlogModel";
 import UserData from "../model/UserModel";
 import { CommentData, LikeData } from "../model/BlogModel";
 
+// Function to handle file upload logic
+const handleFileUpload = (file) => {
+
+  const connection = mongoose.connection; 
+  return new Promise((resolve, reject) => {
+    console.log("Request received:", file);
+
+    if (!file) {
+      return reject({ error: "No file uploaded" });
+    }
+
+    // create a instance to store file using GridFSBucket
+    const bucket = new mongoose.mongo.GridFSBucket(connection.db, {
+      bucketName: "uploads",
+    });
+
+    const uploadStream = bucket.openUploadStream(file.originalname);
+    uploadStream.end(file.buffer);
+
+    uploadStream.on("finish", (uploadedFile) => {
+      console.log("File uploaded:", uploadedFile);
+      const imageUrl = uploadedFile._id;
+      resolve(imageUrl);
+    });
+
+    uploadStream.on("error", (error) => {
+      console.error("Error uploading file:", error);
+      reject({ error: "An error occurred while uploading the file" });
+    });
+  });
+};
+
 export const addBlog = async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -16,26 +48,25 @@ export const addBlog = async (req, res) => {
       return res.status(404).json({ error: "Unable To FInd User By This ID" });
     }
 
-    let imageUrl = null; 
+    let imageUrl = null;
     if (req.file) {
-     
-      // create base path
+      const file = await handleFileUpload(req.file);
+      // // create base path
       const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
-
-      // Construct the image URL using the base path and the file path
-      imageUrl = `${basePath}/api/blog/image/${req.file.filename}` // this is for public dir
-      //  imageUrl = new URL(`/api/blog/image/${req.file.filename}`, basePath).href; // this is for db
+      imageUrl = `${basePath}/api/blog/image/${file}`
+      // // Construct the image URL using the base path and the file path
+      // imageUrl = `${basePath}/api/blog/image/${req.file.filename}` // this is for public dir
     }
 
-    if(!req.file){
-      return res.status(400).json("Please upload a file")
+    if (!req.file) {
+      return res.status(400).json("Please upload a file");
     }
 
-    // create new blog 
+    // create new blog
     const blog = new BlogData({
       title,
       description,
-      image:imageUrl,
+      image: imageUrl,
       user: userId,
     });
 
@@ -69,29 +100,27 @@ export const updateBlog = async (req, res) => {
   try {
     const { title, description } = req.body;
 
-    const  userId = req.userId;
+    const userId = req.userId;
 
     // if you have the route like /update/:id, then the “id” property is available as req.params.id.
     const blogId = req.params.blogId;
-    
+
     let imageUrl;
 
     if (req.file) {
-      
       // File is uploaded
       const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
-      
+
       // Construct the image URL using the base URL and the file path
-      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`
+      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`;
     }
 
     const blog = await BlogData.findByIdAndUpdate(blogId, {
       title,
       description,
-      image:imageUrl,
-      user:userId,
+      image: imageUrl,
+      user: userId,
     });
-
 
     if (!blog) {
       return res
@@ -112,7 +141,10 @@ export const getAllBlogs = async (req, res) => {
     // corresponding user data from the referenced "UserData" model. This allows you to retrieve the complete user information associated with each blog.
 
     //The find() method is one of the built-in query methods provided by Mongoose.which is an Object Data Modeling (ODM) library for MongoDB in Node.js
-    const blogs = await BlogData.find().populate("user","Name picturePath location") // [{}]
+    const blogs = await BlogData.find().populate(
+      "user",
+      "Name picturePath location"
+    ); // [{}]
 
     if (blogs.length === 0) {
       return res.status(404).json({ error: "No Blogs Found" });
@@ -232,15 +264,11 @@ export const addComment = async (req, res) => {
     const blogId = await BlogData.findById(blog);
 
     if (!blogId) {
-      return res
-        .status(404)
-        .json({ error: "No Blog Found with this user ID" });
+      return res.status(404).json({ error: "No Blog Found with this user ID" });
     }
 
     if (!userId) {
-      return res
-        .status(404)
-        .json({ error: "No User Found with this user ID" });
+      return res.status(404).json({ error: "No User Found with this user ID" });
     }
 
     // Create a new CommentData instance
@@ -270,22 +298,18 @@ export const updateComment = async (req, res) => {
   try {
     const { comment } = req.body;
     const { blogId, commentId } = req.params;
-    const  userId = req.userId;
+    const userId = req.userId;
 
     const user = await UserData.findById(userId);
     const blog = await BlogData.findById(blogId);
     const existingComment = await CommentData.findById(commentId);
 
     if (!blog) {
-      return res
-        .status(404)
-        .json({ error: "No Blog Found with this user ID" });
+      return res.status(404).json({ error: "No Blog Found with this user ID" });
     }
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ error: "No User Found with this user ID" });
+      return res.status(404).json({ error: "No User Found with this user ID" });
     }
 
     if (!existingComment) {
