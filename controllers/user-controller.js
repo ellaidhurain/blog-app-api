@@ -232,17 +232,49 @@ const updateUser = async (req, res) => {
   }
 };
 
+// Function to handle file upload logic
+const handleFileUpload = (file) => {
+
+  const connection = mongoose.connection; 
+  return new Promise((resolve, reject) => {
+    console.log("Request received:", file);
+
+    if (!file) {
+      return reject({ error: "No file uploaded" });
+    }
+
+    // create a instance to store file using GridFSBucket
+    const bucket = new mongoose.mongo.GridFSBucket(connection.db, {
+      bucketName: "uploads",
+    });
+
+    const uploadStream = bucket.openUploadStream(file.originalname);
+    uploadStream.end(file.buffer);
+
+    uploadStream.on("finish", (uploadedFile) => {
+      console.log("File uploaded:", uploadedFile);
+      const imageUrl = uploadedFile._id;
+      resolve(imageUrl);
+    });
+
+    uploadStream.on("error", (error) => {
+      console.error("Error uploading file:", error);
+      reject({ error: "An error occurred while uploading the file" });
+    });
+  });
+};
+
+
 const updateProfileImage = async (req, res) => {
   try {
     const {userId} = req.params;
     
     let imageUrl;
     if (req.file) {
-      // File is uploaded
-      const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL => http://localhost:5000
-
-      // Construct the image URL using the base URL and the file path
-      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`;
+      const file = await handleFileUpload(req.file);
+      // // create base path
+      const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
+      imageUrl = `${basePath}/api/blog/image/${file}`
     }
 
     const updatedUser = await UserData.findByIdAndUpdate(
