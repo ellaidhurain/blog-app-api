@@ -105,14 +105,14 @@ export const updateBlog = async (req, res) => {
     // if you have the route like /update/:id, then the “id” property is available as req.params.id.
     const blogId = req.params.blogId;
 
-    let imageUrl;
-
+    let imageUrl = null;
     if (req.file) {
-      // File is uploaded
+      const file = await handleFileUpload(req.file);
+      // // create base path
       const basePath = `${req.protocol}://${req.get("host")}`; // Get the base URL
-
-      // Construct the image URL using the base URL and the file path
-      imageUrl = `${basePath}/api/blog/image/${req.file.filename}`;
+      imageUrl = `${basePath}/api/blog/image/${file}`
+      // // Construct the image URL using the base path and the file path
+      // imageUrl = `${basePath}/api/blog/image/${req.file.filename}` // this is for public dir
     }
 
     const blog = await BlogData.findByIdAndUpdate(blogId, {

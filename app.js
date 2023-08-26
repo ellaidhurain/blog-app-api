@@ -10,19 +10,12 @@ import multer from "multer";
 import helmet from "helmet";
 import path from "path";
 import { fileURLToPath } from "url";
-import bodyParser from "body-parser";
 import {
   refreshToken,
-  signup,
   updateProfileImage,
   verifyToken,
 } from "./controllers/user-controller";
 import { addBlog, updateBlog } from "./controllers/blog-controller";
-import UserData from "./model/UserModel";
-import { createReadStream } from "fs";
-import { GridFsStorage } from "multer-gridfs-storage";
-import Grid from "gridfs-stream";
-import crypto from "crypto";
 
 import { GridFSBucket } from 'mongodb';
 
@@ -49,8 +42,6 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
-app.use(bodyParser.json({ limit: "30mb", extended: true }));
-app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 
 // serve static files
 app.use("/public", express.static(path.join(__dirname, "public")));
